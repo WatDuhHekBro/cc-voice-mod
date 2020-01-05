@@ -12,6 +12,7 @@ export default class VoiceMod extends Plugin
 	- RELATIVE_DIR (String): The directory of the mod relative to "assets/". Follows as "mods/<MOD_NAME>/".
 	- VOICE_DIR (String): The main directory used for voices. Lowest priority when it comes to overriding.
 	- PACKS_DIR (String): The secondary directory used for voices. Middle priority when it comes to overriding.
+	- COMMON_DATA (String): The filename used for the JSON file determining reused dialogue. Must be the same across all voice packs!
 	- COMMON_DIR (String): The subdirectory used for reused dialogue. Must be the same across all voice packs!
 	- DATABASE_DIR (String): The subdirectory used for database dialogue. Must be the same across all voice packs!
 	- MAPS_DIR (String): The subdirectory used for dialogue from individual maps. Must be the same across all voice packs!
@@ -30,6 +31,7 @@ export default class VoiceMod extends Plugin
 		this.VOICE_DIR = 'voice/';
 		this.PACKS_DIR = 'packs/';
 		// Note: If you're going to use this for consistency between different packs, maybe remove this.VOICE_DIR in a future release.
+		this.COMMON_DATA = 'common.json';
 		this.COMMON_DIR = this.VOICE_DIR + 'common/';
 		this.DATABASE_DIR = this.VOICE_DIR + 'database/';
 		this.MAPS_DIR = this.VOICE_DIR + 'maps/';
@@ -42,7 +44,7 @@ export default class VoiceMod extends Plugin
 	
 	async main()
 	{
-		this.COMMON = await simplify.resources.loadJSON('mods/voice-mod/voice/common.json'); // Async Main Required
+		this.COMMON = await simplify.resources.loadJSON(this.RELATIVE_DIR + this.VOICE_DIR + this.COMMON_DATA); // Async Main Required
 		this.beep = true;
 		
 		ig.EVENT_STEP.SHOW_MSG.inject({
