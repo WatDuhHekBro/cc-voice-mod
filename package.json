@@ -1,4 +1,8 @@
 {
-	"name": "voice-mod",
-	"main": "mod.js"
+    "name": "voice-mod",
+    "module": false,
+    "plugin": "mod.js",
+    "version": "0.1.1",
+    "homepage": "https://github.com/WatDuhHekBro/voice-mod",
+    "description": "An attempt at reconstructing the CCVoiceActing mod from the ground up.",
 }
