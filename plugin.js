@@ -12,10 +12,12 @@ export default class VoiceMod extends Plugin
 	- RELATIVE_DIR (String): The directory of the mod relative to "assets/". Follows as "mods/<MOD_NAME>/".
 	- VOICE_DIR (String): The main directory used for voices. Lowest priority when it comes to overriding.
 	- PACKS_DIR (String): The secondary directory used for voices. Middle priority when it comes to overriding.
-	- COMMON_DATA (String): The filename used for the JSON file determining reused dialogue. Must be the same across all voice packs!
+	- COMMON_FILE (String): The filename used for the JSON file determining reused dialogue. Must be the same across all voice packs!
 	- COMMON_DIR (String): The subdirectory used for reused dialogue. Must be the same across all voice packs!
+	- DATABASE_KEYWORD (String): The special keyword used in common.json to switch over to database/ instead of searching in maps/.
 	- DATABASE_DIR (String): The subdirectory used for database dialogue. Must be the same across all voice packs!
 	- MAPS_DIR (String): The subdirectory used for dialogue from individual maps. Must be the same across all voice packs!
+	- LANG_DIR (String): The subdirectory used for . Must be the same across all voice packs!
 	- COMMON (Object): Contains commonly used events for reused dialogue and/or silent dialogue (no sound, no beeps).
 	- beep (Boolean): Determines whether the text makes sound whenever it progresses. Turned off for lines with voice or lines that are declared silent.
 	*/
@@ -31,10 +33,12 @@ export default class VoiceMod extends Plugin
 		this.VOICE_DIR = 'voice/';
 		this.PACKS_DIR = 'packs/';
 		// Note: If you're going to use this for consistency between different packs, maybe remove this.VOICE_DIR in a future release.
-		this.COMMON_DATA = 'common.json';
-		this.COMMON_DIR = this.VOICE_DIR + 'common/';
-		this.DATABASE_DIR = this.VOICE_DIR + 'database/';
-		this.MAPS_DIR = this.VOICE_DIR + 'maps/';
+		this.COMMON_FILE = 'common.json';
+		this.COMMON_DIR = 'common/';
+		this.DATABASE_KEYWORD = 'database';
+		this.DATABASE_DIR = 'database/';
+		this.MAPS_DIR = 'maps/';
+		this.LANG_DIR = 'lang/';
 	}
 	
 	// Order: Constructor, Preload-Async, Preload, Postload-Async, Postload, Prestart-Async, Prestart, Main-Async, Main.
@@ -44,7 +48,7 @@ export default class VoiceMod extends Plugin
 	
 	async main()
 	{
-		this.COMMON = await simplify.resources.loadJSON(this.RELATIVE_DIR + this.VOICE_DIR + this.COMMON_DATA); // Async Main Required
+		this.COMMON = await simplify.resources.loadJSON(this.RELATIVE_DIR + this.VOICE_DIR + this.COMMON_FILE); // Async Main Required
 		this.beep = true;
 		
 		ig.EVENT_STEP.SHOW_MSG.inject({
@@ -113,12 +117,16 @@ export default class VoiceMod extends Plugin
 		var map = ig.game.mapName || simplify.getActiveMapName(); // i.e. hideout.entrance
 		map = map.replace(/\./g,'/'); // i.e. hideout.entrance --> hideout/entrance
 		var id = message.data.langUid; //either undefined or a number
+		var lang = ig.currentLang; // en_US, de_DE, zh_CN, ja_JP, ko_KR, etc.
 		
 		if(id) //id !== undefined
 		{
+			// The "Specific Language" (Map) Case
+			if(fs.existsSync(path.join(this.BASE_DIR, this.VOICE_DIR, this.LANG_DIR, lang, this.MAPS_DIR, map, id + '.ogg'))) // i.e. "assets/mods/voice-test/voice/maps/hideout/entrance/#.ogg" exists
+				return new ig.EVENT_STEP.PLAY_SOUND({'sound': path.join(this.RELATIVE_DIR, this.VOICE_DIR, this.LANG_DIR, lang, this.MAPS_DIR, map, id + '.ogg'), 'name':'voice'});
 			// The "Map" Case
-			if(fs.existsSync(path.join(this.BASE_DIR, this.MAPS_DIR, map, id + '.ogg'))) // i.e. "assets/mods/va-test/sounds/maps/hideout/entrance/#.ogg" exists
-				return new ig.EVENT_STEP.PLAY_SOUND({'sound': path.join(this.BASE_DIR.substring(7), this.MAPS_DIR, map, id + '.ogg'), 'name':'voice'});
+			else if(fs.existsSync(path.join(this.BASE_DIR, this.VOICE_DIR, this.MAPS_DIR, map, id + '.ogg'))) // i.e. "assets/mods/voice-test/voice/maps/hideout/entrance/#.ogg" exists
+				return new ig.EVENT_STEP.PLAY_SOUND({'sound': path.join(this.RELATIVE_DIR, this.VOICE_DIR, this.MAPS_DIR, map, id + '.ogg'), 'name':'voice'});
 			// Add future cases here
 		}
 		else
