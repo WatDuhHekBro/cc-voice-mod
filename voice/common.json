@@ -10,5 +10,9 @@
 	"rhombus-sqr/dng-end":
 	{
 		"hi": [13,39,56]
+	},
+	"hideout/entrance":
+	{
+		"external:media/sound/va/lea/hi.ogg": [4,5,6]
 	}
 }

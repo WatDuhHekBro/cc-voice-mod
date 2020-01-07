@@ -1,5 +1,5 @@
 # Voice Mod
-This mod is an attempt to revive the voice acting mod (the code part at least). It has a different structure and setup compared to the voice acting mod, notably on the usage of langUids to locate messages (you can't add voices to messages without langUids) and the emphasis of allowing others to add their own content packs or voices from external mods.
+This mod is an attempt to revive the voice acting mod (the code part at least). It has a different structure and setup compared to the voice acting mod, notably on the usage of langUids to locate messages (you can't add voices to messages without langUids) and the emphasis of allowing others to add their own content packs.
 
 # Major Changes from [CCVoiceActing](https://github.com/CCDirectLink/CCVoiceacting)
 - **Structural:** Instead of loading a file table that defines where to split each track and which langUids to apply each segment to, sound files are loaded automatically upon playing a new message with a langUid.
@@ -37,14 +37,22 @@ When considering which order/precedence level to use, you should start with the 
 
 # TODO List (There's some stuff that has yet to be done)
 - Add database support/detection.
-- You could also include regex message or expression detections, like the Best-VA thing uses for Lea's words. That could be a more complex use of common.json.
 - Add support for side messages and off-screen messages.
-- Get OBS to work with CCLoader
-- Maybe work on an Audacity plugin to make splitting voice files easier and more systematic.
-- Clean up this readme (only do this once you've finished adding all of the core features).
-- Add the possibility of adding voice to all messages with langUids, including off screen messages (which can be voiced with distant or echo-ish features), since everything's based on langUids. This would also allow narration... meh ¯\\\_(ツ)_/¯.
+	- Add the possibility of adding voice to all messages with langUids, including off screen messages (which can be voiced with distant or echo-ish features), since everything's based on langUids. This would also allow narration... meh ¯\\\_(ツ)_/¯.
 - Maybe add a try-catch statement when dealing with `common.json` to allow for user errors instead of crashing the game?
+	- You have to check whether `common.json` exists before trying to add it. And yes, implement that try-catch so you can get a custom error message telling the player it's `common.json`, not the code itself.
+	- Do make sure to check if a file exists before attempting to use it, this part isn't fool-proof.
+
+# TODO Other
+- Clean up this readme (only do this once you've finished adding all of the core features).
+- Clean up the code and comments. The README's final form (when cleaned up) should look like professional documentation on how to use its features rather than a brain dump.
+- Get OBS to work with CCLoader.
+- Maybe work on an Audacity plugin to make splitting voice files easier and more systematic.
 
 # Cancelled Features
 - A system to allow for every modder to set up a voice pack in their own modding directory. This was planned with the intention of allowing modders to add voices to their own mods. This would've allowed other mods to have self-contained voices that came with the package.
 	- I decided to cancel this feature when I realized how unnecessary all of this was. If a modder even decides to make voices for their own mods, it'll be a minor inconvenience at worst to make users have to move a folder. Plus, this'll keep everything in one place, either the main `voice/` folder or a voice pack in `packs/`, because other modders would also have to account for having a `voice/` directory unrelated to this mod as well as having to setup `voicemod.json` if they wanted to reroute the `voice/` folder. In doing this, I also cancelled an idea which would've allowed people to define their own paths instead of the default ones. Again, more headaches than necessary.
+- A feature in `common.json` which would've allowed for choosing a sound (or a random sound of an array) based on a regex filter of what the text was and/or the expression(s) the character had. It would function much like the Best-VA voices do with its ability to select arbitrary text and filter the sounds it could have.
+	- I decided to cancel this feature because it didn't fit the design perspective of this mod (also I was too lazy to implement it). But for the most part, I think it'd be better to have a separate mod which basically uses the system Best-VA provides instead of reinventing the wheel. The voice mod is meant to provide specificity rather than generality.
+- A feature in `common.json` which would've allowed the user to use a wildcard `"*"` instead of an array of langUids to apply a certain sound to all messages (maybe even ones without langUids) unless otherwise specified. You could make entire maps silent with this for example.
+	- This mostly would've been used to make entire maps silent. Another cancelled feature related to this would be the ability to toggle whether beeps should play at all. I'm thinking that a separate mod to handle this case would be better.

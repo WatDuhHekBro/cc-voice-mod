@@ -11,13 +11,15 @@ export default class VoiceMod extends Plugin
 	- RELATIVE_DIR (String): The directory of the mod relative to "assets/". Follows as "mods/<MOD_NAME>/".
 	- VOICE_DIR (String): The main directory used for voices. Lowest priority when it comes to overriding.
 	- PACKS_DIR (String): The secondary directory used for voices. Middle priority when it comes to overriding.
+	- PACKS (Array)
 	- COMMON_FILE (String): The filename used for the JSON file determining reused dialogue. Must be the same across all voice packs!
 	- COMMON_DIR (String): The subdirectory used for reused dialogue. Must be the same across all voice packs!
 	- DATABASE_DIR (String): The subdirectory used for database dialogue. Must be the same across all voice packs!
 	- MAPS_DIR (String): The subdirectory used for dialogue from individual maps. Must be the same across all voice packs!
 	- LANG_DIR (String): The subdirectory used for implementing voices on different languages. Must be the same across all voice packs!
-	- COMMON (Object): Contains commonly used events for reused dialogue and/or silent dialogue (no sound, no beeps).
+	- COMMON (Array of Objects): Contains commonly used events for reused dialogue and/or silent dialogue (no sound, no beeps).
 	- beep (Boolean): Determines whether the text makes sound whenever it progresses. Turned off for lines with voice or lines that are declared silent.
+	- bestva (Boolean)
 	
 	[Directories] (Set in order of reverse precedence so that when looping through the list, later settings overwrite previous settings.)
 	assets/mods/voice-mod/voice/...
@@ -63,70 +65,8 @@ export default class VoiceMod extends Plugin
 	async main()
 	{
 		// common.json overriding works like this: You have your object and add onto it based on the order of this.DIRECTORIES. If a property exists in the index of this.DIRECTORIES, then overwrite it.
-		this.COMMON = await simplify.resources.loadJSON(this.RELATIVE_DIR + this.VOICE_DIR + this.COMMON_FILE); // Async Main Required
+		this.COMMON = await this._getCommons(); // Async Main Required
 		this._injectMain(this);
-	}
-	
-	_getVoice(langUid) // langUid is either undefined or a number
-	{
-		// Potential problems with database entries!
-		var map = ig.game.mapName; // ie hideout.entrance
-		var lang = ig.currentLang; // en_US, de_DE, zh_CN, ja_JP, ko_KR, etc.
-		var src;
-		
-		if(langUid && map) // If langUid !== undefined && map !== undefined/null
-		{
-			map = map.replace(/\./g,'/'); // ie hideout.entrance --> hideout/entrance, placed here just in case map is undefined (like if you're in the title screen).
-			// The order here is based on precedence. A language setting overrides the default case, but the default case overrides common events (with the logic that if you're declaring a specific sound file, it should override commonly used ones which might be there by mistake).
-			
-			// Loops through the main directory and all the packs. Later entries will override previous entries.
-			for(var i = 0; i < this.PACKS.length; i++)
-			{
-				var pack = this.PACKS[i] ? this.PACKS_DIR + this.PACKS[i] : this.VOICE_DIR;
-				
-				// The "Specific Language" (Map) Case
-				if(fs.existsSync(path.join(this.BASE_DIR, pack, this.LANG_DIR, lang, this.MAPS_DIR, map, langUid + '.ogg'))) // ie "assets/mods/<MOD_NAME>/voice/maps/hideout/entrance/#.ogg" exists
-					src = path.join(this.RELATIVE_DIR, pack, this.LANG_DIR, lang, this.MAPS_DIR, map, langUid + '.ogg');
-				// The "Map" Case
-				else if(fs.existsSync(path.join(this.BASE_DIR, pack, this.MAPS_DIR, map, langUid + '.ogg'))) // ie "assets/mods/<MOD_NAME>/voice/maps/hideout/entrance/#.ogg" exists
-					src = path.join(this.RELATIVE_DIR, pack, this.MAPS_DIR, map, langUid + '.ogg');
-				// The "common.json" (Map) Case
-				else if(this.COMMON[map]) // ie If a common.json entry of "hideout/entrance" exists. This works on everything except "special:database" which will be its own case.
-				{
-					// Loop through the sounds defined in each map.
-					for(var sound in this.COMMON[map])
-					{
-						// Loop through the array of langUids per sound.
-						for(var j = 0; j < this.COMMON[map][sound].length; j++)
-						{
-							// If langUids match, fetch the sound.
-							if(langUid === this.COMMON[map][sound][j])
-							{
-								if(sound.includes(':'))
-								{
-									var protocol = sound.substring(0, sound.indexOf(':')); // ie "external" or "special"
-									var arg = sound.substring(sound.indexOf(':')+1);
-									
-									// "external" will allow the user to access mods outside the "common" folder.
-									if(protocol === 'external')
-										src = arg;
-									else if(protocol === 'special')
-									{
-										if(arg === 'silence')
-											this.beep = false; // Temporarily set beep to false to access this setting outside of 
-										// Add future cases
-									}
-								}
-								else
-									src = path.join(this.RELATIVE_DIR, pack, this.COMMON_DIR, sound + '.ogg');
-							}
-						}
-					}
-				}
-			}
-		}
-		
-		return src ? new ig.EVENT_STEP.PLAY_SOUND({'sound':src, 'name':'voice'}) : null;
 	}
 	
 	// "mod" will be used to reference the plugin while injecting code since "this" no longer references the plugin while inside those code blocks.
@@ -157,7 +97,6 @@ export default class VoiceMod extends Plugin
 				}
 				
 				mod.beep = this.beep; // Set beep if there was a custom setting involved. If there's voice, it'll be set to false anyway.
-				sc.voiceActing.load();
 				this.parent();
 				mod.bestva = true;
 			}
@@ -193,7 +132,7 @@ export default class VoiceMod extends Plugin
 				// The advantage of injecting code here rather than sc.MsgBoxGui's init function is that you don't have to worry about messing with ig.dreamFx.isActive(), whether there's a dream going on.
 				// This is placed before the beepSound is used to let this script determine whether there is a beep or not.
 				// Additionally, if mod.beep is true but this.beepSound is still null, then reset it. [ERROR: null when testing hideout/entrance, will (probably) conflict with undertale-sfx.] This is just a band aid.
-				this.beepSound = mod.beep ? (this.beepSound ? this.beepSound : new ig.Sound("media/sound/hud/dialog-beep-2.ogg", 1, 0.02)) : null;
+				this.beepSound = mod.beep ? (this.beepSound || new ig.Sound('media/sound/hud/dialog-beep-2.ogg', 1, 0.02)) : null;
 				return this.parent(...arguments); // The original function returns a value, so you have to return the parent call, otherwise there'll be an error.
 			}
 		});
@@ -252,6 +191,72 @@ export default class VoiceMod extends Plugin
 		});
 	}
 	
+	_getVoice(langUid) // langUid is either undefined or a number
+	{
+		// Potential problems with database entries!
+		var map = ig.game.mapName; // ie hideout.entrance
+		var lang = ig.currentLang; // en_US, de_DE, zh_CN, ja_JP, ko_KR, etc.
+		var src;
+		
+		if(langUid && map) // If langUid !== undefined && map !== undefined/null
+		{
+			map = map.replace(/\./g,'/'); // ie hideout.entrance --> hideout/entrance, placed here just in case map is undefined (like if you're in the title screen).
+			// The order here is based on precedence. A language setting overrides the default case, but the default case overrides common events (with the logic that if you're declaring a specific sound file, it should override commonly used ones which might be there by mistake).
+			
+			// Loops through the main directory and all the packs. Later entries will override previous entries.
+			for(var i = 0; i < this.PACKS.length; i++)
+			{
+				var pack = this.PACKS[i] ? this.PACKS_DIR + this.PACKS[i] : this.VOICE_DIR;
+				
+				// The "Specific Language" (Map) Case
+				if(fs.existsSync(path.join(this.BASE_DIR, pack, this.LANG_DIR, lang, this.MAPS_DIR, map, langUid + '.ogg'))) // ie "assets/mods/<MOD_NAME>/voice/maps/hideout/entrance/#.ogg" exists
+					src = path.join(this.RELATIVE_DIR, pack, this.LANG_DIR, lang, this.MAPS_DIR, map, langUid + '.ogg');
+				// The "Map" Case
+				else if(fs.existsSync(path.join(this.BASE_DIR, pack, this.MAPS_DIR, map, langUid + '.ogg'))) // ie "assets/mods/<MOD_NAME>/voice/maps/hideout/entrance/#.ogg" exists
+					src = path.join(this.RELATIVE_DIR, pack, this.MAPS_DIR, map, langUid + '.ogg');
+				// The "common.json" (Map) Case
+				// WARNING: Until you merge all common.json files, this will be called multiple times (base + # of packs).
+				else if(this.COMMON[i] && this.COMMON[i][map]) // ie If a common.json entry of "hideout/entrance" exists. This works on everything except "special:database" which will be its own case.
+				{
+					// Loop through the sounds defined in each map.
+					for(var sound in this.COMMON[i][map])
+					{
+						// Loop through the array of langUids per sound.
+						for(var j = 0; j < this.COMMON[i][map][sound].length; j++)
+						{
+							// If langUids match, fetch the sound.
+							if(langUid === this.COMMON[i][map][sound][j])
+								src = this._getCommonSound(sound, pack);
+						}
+					}
+				}
+			}
+		}
+		
+		return src ? new ig.EVENT_STEP.PLAY_SOUND({'sound':src, 'name':'voice'}) : null;
+	}
+	
+	_getCommonSound(sound, pack)
+	{
+		if(sound.includes(':'))
+		{
+			var protocol = sound.substring(0, sound.indexOf(':')); // ie "external" or "special"
+			var arg = sound.substring(sound.indexOf(':')+1);
+			
+			// "external" will allow the user to access mods outside the "common" folder.
+			if(protocol === 'external')
+				return arg;
+			else if(protocol === 'special')
+			{
+				if(arg === 'silence')
+					this.beep = false; // Temporarily set beep to false to access this setting outside of 
+				// Add future cases
+			}
+		}
+		else if(fs.existsSync(path.join(this.BASE_DIR, pack, this.COMMON_DIR, sound + '.ogg')))
+			return path.join(this.RELATIVE_DIR, pack, this.COMMON_DIR, sound + '.ogg');
+	}
+	
 	_getPacks()
 	{
 		// The idea behind putting a null as the first item in packs is that when looping through these packs, the first one will route to "voice/".
@@ -263,6 +268,21 @@ export default class VoiceMod extends Plugin
 		for(var i = 0; i < list.length; i++)
 			if(fs.statSync(path.join(this.BASE_DIR, this.PACKS_DIR, list[i])).isDirectory())
 				packs.push(list[i]);
+		
+		return packs;
+	}
+	
+	async _getCommons()
+	{
+		var packs = [await simplify.resources.loadJSON(path.join(this.RELATIVE_DIR, this.VOICE_DIR, this.COMMON_FILE))];
+		
+		for(var i = 1; i < this.PACKS.length; i++)
+		{
+			if(fs.existsSync(path.join(this.BASE_DIR, this.PACKS_DIR, this.PACKS[i], this.COMMON_FILE)))
+				packs.push(await simplify.resources.loadJSON(path.join(this.RELATIVE_DIR, this.PACKS_DIR, this.PACKS[i], this.COMMON_FILE)));
+			else
+				packs.push(null);
+		}
 		
 		return packs;
 	}
