@@ -1,6 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 
+// fs.readdirSync('assets/mods/voice-mod/packs/') - ["demo-pack"]
+// fs.statSync('assets/mods/voice-mod/package.json').isDirectory() - false
+
 export default class VoiceMod extends Plugin
 {
 	/*
@@ -18,6 +21,60 @@ export default class VoiceMod extends Plugin
 	- LANG_DIR (String): The subdirectory used for implementing voices on different languages. Must be the same across all voice packs!
 	- COMMON (Object): Contains commonly used events for reused dialogue and/or silent dialogue (no sound, no beeps).
 	- beep (Boolean): Determines whether the text makes sound whenever it progresses. Turned off for lines with voice or lines that are declared silent.
+	
+	[Directories] (Set in order of reverse precedence so that when looping through the list, later settings overwrite previous settings.)
+	assets/mods/voice-mod/voice/...
+	assets/mods/voice-mod/packs/<pack>/...
+	
+	[The Directory Object]
+	In order to get everything set up, this'll have to use an array somewhere. The question is where.
+	- One approach is to have one object with an array of one attribute (the absolute paths as listed above) and then just use internal functions to handle everything. But why have functions called each time when you could just get them as values and be able to immediately call them?
+	x ---The approach I'll go is as an array of objects which will just hold properties. And mod users can override these properties by including "voicemod.json" in their core folder and editing the below. The only things you can't modify are "base" and "relative".---
+	- Since everything inside these directories must be the same, it makes no sense to add them as attributes.
+	[
+		{
+			"base": "assets/mods/voice-mod/",
+			"relative": "mods/voice-mod/"
+		},
+		{
+			"base": "assets/mods/voice-mod/packs/<pack>/",
+			"relative": "mods/voice-mod/packs/<pack>/"
+		}
+	]
+	
+	The below is now deprecated.
+	[
+		{
+			"base": "assets/mods/voice-mod/",
+			"relative": "mods/voice-mod/",
+			"voice": "voice/",
+			"common-settings": "common.json",
+			"common": "common/",
+			"database": "database/",
+			"maps": "maps/",
+			"lang": "lang/",
+		},
+		{
+			"base": "assets/mods/voice-mod/packs/<pack>/",
+			"relative": "mods/voice-mod/packs/<pack>/",
+			"voice": "voice/",
+			"common-settings": "common.json",
+			"common": "common/",
+			"database": "database/",
+			"maps": "maps/",
+			"lang": "lang/",
+		},
+		{
+			"base": "assets/mods/<mod>/",
+			"relative": "mods/<mod>/",
+			"voice": "voice/",
+			"common-settings": "common.json",
+			"common": "common/",
+			"database": "database/",
+			"maps": "maps/",
+			"lang": "lang/",
+		}
+	]
 	*/
 	
 	constructor(mod)
@@ -29,37 +86,43 @@ export default class VoiceMod extends Plugin
 		this.RELATIVE_DIR = this.BASE_DIR.substring(7); // Gets rid of "assets/".
 		this.VOICE_DIR = 'voice/';
 		this.PACKS_DIR = 'packs/';
-		// Note: If you're going to use this for consistency between different packs, maybe remove this.VOICE_DIR in a future release.
+		// These will remain the same for the main voices and packs.
 		this.COMMON_FILE = 'common.json';
 		this.COMMON_DIR = 'common/';
 		this.DATABASE_KEYWORD = 'database';
 		this.DATABASE_DIR = 'database/';
 		this.MAPS_DIR = 'maps/';
 		this.LANG_DIR = 'lang/';
+		this.beep = true;
 	}
 	
 	// Order: Constructor, Preload-Async, Preload, Postload-Async, Postload, Prestart-Async, Prestart, Main-Async, Main.
 	// Injecting works in Prestart and Main.
 	async preload() {}
 	async postload() {}
-	async prestart() {}
+	
+	async prestart()
+	{
+		this._inject(this);
+	}
 	
 	async main()
 	{
+		//this.DIRECTORIES = this._getDirectories(this); // Load declared paths. Merging conflicts with common.json is a whole different beast. It'll still go in the same function when I'm done though.
+		// common.json overriding works like this: You have your object and add onto it based on the order of this.DIRECTORIES. If a property exists in the index of this.DIRECTORIES, then overwrite it.
 		this.COMMON = await simplify.resources.loadJSON(this.RELATIVE_DIR + this.VOICE_DIR + this.COMMON_FILE); // Async Main Required
-		this.beep = true;
-		this._inject(this);
 	}
 	
 	_getVoice(langUid) // langUid is either undefined or a number
 	{
 		// Potential problems with database entries!
-		var map = ig.game.mapName.replace(/\./g,'/'); // ie hideout.entrance --> hideout/entrance
+		var map = ig.game.mapName; // ie hideout.entrance
 		var lang = ig.currentLang; // en_US, de_DE, zh_CN, ja_JP, ko_KR, etc.
 		var src;
 		
-		if(langUid) // If langUid !== undefined
+		if(langUid && map) // If langUid !== undefined && map !== undefined/null
 		{
+			map = map.replace(/\./g,'/'); // ie hideout.entrance --> hideout/entrance
 			// The order here is based on precedence. A languag setting overrides the default case, but the default case overrides common events (with the logic that if you're declaring a specific sound file, it should override commonly used ones which might be there by mistake).
 			
 			// The "Specific Language" (Map) Case
@@ -153,12 +216,11 @@ export default class VoiceMod extends Plugin
 		});
 		
 		// This is to stop all voices when moving from room to room.
-		// ERROR: Apparently I can't inject events into ig.Game? Adding the code in game.compiled.js directly works as expected.
+		// And apparently I can't inject into this unless I put it in prestart.
 		ig.Game.inject({
 			teleport: function()
 			{
 				new ig.EVENT_STEP.STOP_SOUND({'name':'voice'}).start();
-				console.log('teleport event');
 				this.parent(...arguments);
 			}
 		});
@@ -190,4 +252,48 @@ export default class VoiceMod extends Plugin
 			}
 		});*/
 	}
+	
+	/*_getDirectories(main)
+	{
+		const VOICE_DIR = 'voice/';
+		const COMMON_FILE = 'common.json';
+		const COMMON_DIR = 'common/';
+		const DATABASE_DIR = 'database/';
+		const MAPS_DIR = 'maps/';
+		const LANG_DIR = 'lang/';
+		var directories = [];
+		var index = 0; // The index used for the entirety of the directories array.
+		
+		// Load the voice/ directory from the core mod.
+		directories[index] = {
+			'base': this.mod.baseDirectory,
+			'relative': this.mod.baseDirectory.substring(7), // Gets rid of "assets/".
+			'voice': VOICE_DIR,
+			'common-settings': COMMON_FILE,
+			'common': COMMON_DIR,
+			'database': DATABASE_DIR,
+			'maps': MAPS_DIR,
+			'lang': LANG_DIR,
+		};
+		index++;
+		
+		// Load all the packs from the core mod.
+		// ...
+		
+		// Import voices from other mods. Load order is based on window.activeMods. Soon(TM)
+		/*for(var i = 0; i < window.activeMods.length; i++)
+		{
+			var mod = window.activeMods[i];
+			
+			// Excludes this mod since it has already been added. Also checks if there is either a voice directory or voicemod.json exists.
+			if(mod.name !== this.mod.name && )
+			{
+				
+				
+				index++;
+			}
+		}*/
+		
+		//return directories;
+	//}
 }
