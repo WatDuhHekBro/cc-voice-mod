@@ -1,8 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-
-// fs.readdirSync('assets/mods/voice-mod/packs/') - ["demo-pack"]
-// fs.statSync('assets/mods/voice-mod/package.json').isDirectory() - false
+// In the future, see if there's a way to do all this asynchronously. It's not good to hold up the system like this.
 
 export default class VoiceMod extends Plugin
 {
@@ -15,7 +13,6 @@ export default class VoiceMod extends Plugin
 	- PACKS_DIR (String): The secondary directory used for voices. Middle priority when it comes to overriding.
 	- COMMON_FILE (String): The filename used for the JSON file determining reused dialogue. Must be the same across all voice packs!
 	- COMMON_DIR (String): The subdirectory used for reused dialogue. Must be the same across all voice packs!
-	- DATABASE_KEYWORD (String): The special keyword used in common.json to switch over to database/ instead of searching in maps/.
 	- DATABASE_DIR (String): The subdirectory used for database dialogue. Must be the same across all voice packs!
 	- MAPS_DIR (String): The subdirectory used for dialogue from individual maps. Must be the same across all voice packs!
 	- LANG_DIR (String): The subdirectory used for implementing voices on different languages. Must be the same across all voice packs!
@@ -26,55 +23,9 @@ export default class VoiceMod extends Plugin
 	assets/mods/voice-mod/voice/...
 	assets/mods/voice-mod/packs/<pack>/...
 	
-	[The Directory Object]
-	In order to get everything set up, this'll have to use an array somewhere. The question is where.
-	- One approach is to have one object with an array of one attribute (the absolute paths as listed above) and then just use internal functions to handle everything. But why have functions called each time when you could just get them as values and be able to immediately call them?
-	x ---The approach I'll go is as an array of objects which will just hold properties. And mod users can override these properties by including "voicemod.json" in their core folder and editing the below. The only things you can't modify are "base" and "relative".---
-	- Since everything inside these directories must be the same, it makes no sense to add them as attributes.
-	[
-		{
-			"base": "assets/mods/voice-mod/",
-			"relative": "mods/voice-mod/"
-		},
-		{
-			"base": "assets/mods/voice-mod/packs/<pack>/",
-			"relative": "mods/voice-mod/packs/<pack>/"
-		}
-	]
-	
-	The below is now deprecated.
-	[
-		{
-			"base": "assets/mods/voice-mod/",
-			"relative": "mods/voice-mod/",
-			"voice": "voice/",
-			"common-settings": "common.json",
-			"common": "common/",
-			"database": "database/",
-			"maps": "maps/",
-			"lang": "lang/",
-		},
-		{
-			"base": "assets/mods/voice-mod/packs/<pack>/",
-			"relative": "mods/voice-mod/packs/<pack>/",
-			"voice": "voice/",
-			"common-settings": "common.json",
-			"common": "common/",
-			"database": "database/",
-			"maps": "maps/",
-			"lang": "lang/",
-		},
-		{
-			"base": "assets/mods/<mod>/",
-			"relative": "mods/<mod>/",
-			"voice": "voice/",
-			"common-settings": "common.json",
-			"common": "common/",
-			"database": "database/",
-			"maps": "maps/",
-			"lang": "lang/",
-		}
-	]
+	It doesn't make sense to have a different object for keeping track of all the packs. Instead, it'll just be an array of pack names, the rest of the path is already taken care of.
+	["demo-pack", ...]
+	Then just use assets/mods/voice-mod/packs/demo-pack/...
 	*/
 	
 	constructor(mod)
@@ -86,10 +37,10 @@ export default class VoiceMod extends Plugin
 		this.RELATIVE_DIR = this.BASE_DIR.substring(7); // Gets rid of "assets/".
 		this.VOICE_DIR = 'voice/';
 		this.PACKS_DIR = 'packs/';
+		this.PACKS = this._getPacks();
 		// These will remain the same for the main voices and packs.
 		this.COMMON_FILE = 'common.json';
 		this.COMMON_DIR = 'common/';
-		this.DATABASE_KEYWORD = 'database';
 		this.DATABASE_DIR = 'database/';
 		this.MAPS_DIR = 'maps/';
 		this.LANG_DIR = 'lang/';
@@ -108,7 +59,6 @@ export default class VoiceMod extends Plugin
 	
 	async main()
 	{
-		//this.DIRECTORIES = this._getDirectories(this); // Load declared paths. Merging conflicts with common.json is a whole different beast. It'll still go in the same function when I'm done though.
 		// common.json overriding works like this: You have your object and add onto it based on the order of this.DIRECTORIES. If a property exists in the index of this.DIRECTORIES, then overwrite it.
 		this.COMMON = await simplify.resources.loadJSON(this.RELATIVE_DIR + this.VOICE_DIR + this.COMMON_FILE); // Async Main Required
 	}
@@ -122,44 +72,50 @@ export default class VoiceMod extends Plugin
 		
 		if(langUid && map) // If langUid !== undefined && map !== undefined/null
 		{
-			map = map.replace(/\./g,'/'); // ie hideout.entrance --> hideout/entrance
-			// The order here is based on precedence. A languag setting overrides the default case, but the default case overrides common events (with the logic that if you're declaring a specific sound file, it should override commonly used ones which might be there by mistake).
+			map = map.replace(/\./g,'/'); // ie hideout.entrance --> hideout/entrance, placed here just in case map is undefined (like if you're in the title screen).
+			// The order here is based on precedence. A language setting overrides the default case, but the default case overrides common events (with the logic that if you're declaring a specific sound file, it should override commonly used ones which might be there by mistake).
 			
-			// The "Specific Language" (Map) Case
-			if(fs.existsSync(path.join(this.BASE_DIR, this.VOICE_DIR, this.LANG_DIR, lang, this.MAPS_DIR, map, langUid + '.ogg'))) // ie "assets/mods/voice-test/voice/maps/hideout/entrance/#.ogg" exists
-				src = path.join(this.RELATIVE_DIR, this.VOICE_DIR, this.LANG_DIR, lang, this.MAPS_DIR, map, langUid + '.ogg');
-			// The "Map" Case
-			else if(fs.existsSync(path.join(this.BASE_DIR, this.VOICE_DIR, this.MAPS_DIR, map, langUid + '.ogg'))) // ie "assets/mods/voice-test/voice/maps/hideout/entrance/#.ogg" exists
-				src = path.join(this.RELATIVE_DIR, this.VOICE_DIR, this.MAPS_DIR, map, langUid + '.ogg');
-			// The "common.json" (Map) Case
-			else if(this.COMMON[map]) // ie If a common.json entry of "hideout/entrance" exists. This works on everything except "special:database" which will be its own case.
+			// Loops through the main directory and all the packs. Later entries will override previous entries.
+			for(var i = 0; i < this.PACKS.length; i++)
 			{
-				// Loop through the sounds defined in each map.
-				for(var sound in this.COMMON[map])
+				var pack = this.PACKS[i] ? this.PACKS_DIR + this.PACKS[i] : this.VOICE_DIR;
+				
+				// The "Specific Language" (Map) Case
+				if(fs.existsSync(path.join(this.BASE_DIR, pack, this.LANG_DIR, lang, this.MAPS_DIR, map, langUid + '.ogg'))) // ie "assets/mods/<MOD_NAME>/voice/maps/hideout/entrance/#.ogg" exists
+					src = path.join(this.RELATIVE_DIR, pack, this.LANG_DIR, lang, this.MAPS_DIR, map, langUid + '.ogg');
+				// The "Map" Case
+				else if(fs.existsSync(path.join(this.BASE_DIR, pack, this.MAPS_DIR, map, langUid + '.ogg'))) // ie "assets/mods/<MOD_NAME>/voice/maps/hideout/entrance/#.ogg" exists
+					src = path.join(this.RELATIVE_DIR, pack, this.MAPS_DIR, map, langUid + '.ogg');
+				// The "common.json" (Map) Case
+				else if(this.COMMON[map]) // ie If a common.json entry of "hideout/entrance" exists. This works on everything except "special:database" which will be its own case.
 				{
-					// Loop through the array of langUids per sound.
-					for(var i = 0; i < this.COMMON[map][sound].length; i++)
+					// Loop through the sounds defined in each map.
+					for(var sound in this.COMMON[map])
 					{
-						// If langUids match, fetch the sound.
-						if(langUid === this.COMMON[map][sound][i])
+						// Loop through the array of langUids per sound.
+						for(var j = 0; j < this.COMMON[map][sound].length; j++)
 						{
-							if(sound.includes(':'))
+							// If langUids match, fetch the sound.
+							if(langUid === this.COMMON[map][sound][j])
 							{
-								var protocol = sound.substring(0, sound.indexOf(':')); // ie "external" or "special"
-								var arg = sound.substring(sound.indexOf(':')+1);
-								
-								// "external" will allow the user to access mods outside the "common" folder.
-								if(protocol === 'external')
-									src = arg;
-								else if(protocol === 'special')
+								if(sound.includes(':'))
 								{
-									if(arg === 'silence')
-										this.beep = false; // Temporarily set beep to false to access this setting outside of 
-									// Add future cases
+									var protocol = sound.substring(0, sound.indexOf(':')); // ie "external" or "special"
+									var arg = sound.substring(sound.indexOf(':')+1);
+									
+									// "external" will allow the user to access mods outside the "common" folder.
+									if(protocol === 'external')
+										src = arg;
+									else if(protocol === 'special')
+									{
+										if(arg === 'silence')
+											this.beep = false; // Temporarily set beep to false to access this setting outside of 
+										// Add future cases
+									}
 								}
+								else
+									src = path.join(this.RELATIVE_DIR, pack, this.COMMON_DIR, sound + '.ogg');
 							}
-							else
-								src = path.join(this.RELATIVE_DIR, this.VOICE_DIR, this.COMMON_DIR, sound + '.ogg');
 						}
 					}
 				}
@@ -229,8 +185,12 @@ export default class VoiceMod extends Plugin
 			// Injecting into the init function isn't used here because this is called once/twice whenever a person is added, not whenever a message pops up.
 			addMessage: function()
 			{
-				// The advantage of injecting code into this rather than sc.MsgBoxGui's init function is that you don't have to worry about messing with ig.dreamFx.isActive(), whether there's a dream going on.
-				this.beepSound = mod.beep ? this.beepSound : null; // This is placed before the beepSound is used to let this script determine whether there is a beep or not.
+				console.log(this.beepSound);
+				// The advantage of injecting code here rather than sc.MsgBoxGui's init function is that you don't have to worry about messing with ig.dreamFx.isActive(), whether there's a dream going on.
+				// This is placed before the beepSound is used to let this script determine whether there is a beep or not.
+				// Additionally, if mod.beep is true but this.beepSound is still null, then reset it. [ERROR: null when testing hideout/entrance, will (probably) conflict with undertale-sfx.] This is just a band aid.
+				this.beepSound = mod.beep ? (this.beepSound ? this.beepSound : new ig.Sound("media/sound/hud/dialog-beep-2.ogg", 1, 0.02)) : null;
+				console.log(this.beepSound);
 				return this.parent(...arguments); // The original function returns a value, so you have to return the parent call, otherwise there'll be an error.
 			}
 		});
@@ -253,47 +213,18 @@ export default class VoiceMod extends Plugin
 		});*/
 	}
 	
-	/*_getDirectories(main)
+	_getPacks()
 	{
-		const VOICE_DIR = 'voice/';
-		const COMMON_FILE = 'common.json';
-		const COMMON_DIR = 'common/';
-		const DATABASE_DIR = 'database/';
-		const MAPS_DIR = 'maps/';
-		const LANG_DIR = 'lang/';
-		var directories = [];
-		var index = 0; // The index used for the entirety of the directories array.
+		// The idea behind putting a null as the first item in packs is that when looping through these packs, the first one will route to "voice/".
+		var packs = [null];
+		// Reads what's in "assets/mods/<MOD_NAME>/packs/" if "packs/" exists. ie ["demo-pack"] //
+		var list = fs.existsSync(path.join(this.BASE_DIR, this.PACKS_DIR)) ? fs.readdirSync(path.join(this.BASE_DIR, this.PACKS_DIR)) : [];
 		
-		// Load the voice/ directory from the core mod.
-		directories[index] = {
-			'base': this.mod.baseDirectory,
-			'relative': this.mod.baseDirectory.substring(7), // Gets rid of "assets/".
-			'voice': VOICE_DIR,
-			'common-settings': COMMON_FILE,
-			'common': COMMON_DIR,
-			'database': DATABASE_DIR,
-			'maps': MAPS_DIR,
-			'lang': LANG_DIR,
-		};
-		index++;
+		// For each entry in "packs/", if it's a folder, then add it to packs. //
+		for(var i = 0; i < list.length; i++)
+			if(fs.statSync(path.join(this.BASE_DIR, this.PACKS_DIR, list[i])).isDirectory())
+				packs.push(list[i]);
 		
-		// Load all the packs from the core mod.
-		// ...
-		
-		// Import voices from other mods. Load order is based on window.activeMods. Soon(TM)
-		/*for(var i = 0; i < window.activeMods.length; i++)
-		{
-			var mod = window.activeMods[i];
-			
-			// Excludes this mod since it has already been added. Also checks if there is either a voice directory or voicemod.json exists.
-			if(mod.name !== this.mod.name && )
-			{
-				
-				
-				index++;
-			}
-		}*/
-		
-		//return directories;
-	//}
+		return packs;
+	}
 }
