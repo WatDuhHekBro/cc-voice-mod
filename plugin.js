@@ -28,6 +28,8 @@ export default class VoiceMod extends Plugin
 	Then just use assets/mods/voice-mod/packs/demo-pack/...
 	*/
 	
+	// Database: ig.EVENT_STEP.TRIGGER_COMMON_EVENTS?
+	
 	constructor(mod)
 	{
 		super(mod);
@@ -45,6 +47,7 @@ export default class VoiceMod extends Plugin
 		this.MAPS_DIR = 'maps/';
 		this.LANG_DIR = 'lang/';
 		this.beep = true;
+		this.bestva = false; // If bestva is being used, disable all beeps.
 	}
 	
 	// Order: Constructor, Preload-Async, Preload, Postload-Async, Postload, Prestart-Async, Prestart, Main-Async, Main.
@@ -61,6 +64,7 @@ export default class VoiceMod extends Plugin
 	{
 		// common.json overriding works like this: You have your object and add onto it based on the order of this.DIRECTORIES. If a property exists in the index of this.DIRECTORIES, then overwrite it.
 		this.COMMON = await simplify.resources.loadJSON(this.RELATIVE_DIR + this.VOICE_DIR + this.COMMON_FILE); // Async Main Required
+		this._injectMain(this);
 	}
 	
 	_getVoice(langUid) // langUid is either undefined or a number
@@ -149,12 +153,13 @@ export default class VoiceMod extends Plugin
 				{
 					this.voice.start();
 					this.beep = false;
+					mod.bestva = false;
 				}
 				
-				// Set beep if there was a custom setting involved. If there's voice, it'll be set to false anyway.
-				mod.beep = this.beep;
-				
+				mod.beep = this.beep; // Set beep if there was a custom setting involved. If there's voice, it'll be set to false anyway.
+				sc.voiceActing.load();
 				this.parent();
+				mod.bestva = true;
 			}
 		});
 		
@@ -185,12 +190,10 @@ export default class VoiceMod extends Plugin
 			// Injecting into the init function isn't used here because this is called once/twice whenever a person is added, not whenever a message pops up.
 			addMessage: function()
 			{
-				console.log(this.beepSound);
 				// The advantage of injecting code here rather than sc.MsgBoxGui's init function is that you don't have to worry about messing with ig.dreamFx.isActive(), whether there's a dream going on.
 				// This is placed before the beepSound is used to let this script determine whether there is a beep or not.
 				// Additionally, if mod.beep is true but this.beepSound is still null, then reset it. [ERROR: null when testing hideout/entrance, will (probably) conflict with undertale-sfx.] This is just a band aid.
 				this.beepSound = mod.beep ? (this.beepSound ? this.beepSound : new ig.Sound("media/sound/hud/dialog-beep-2.ogg", 1, 0.02)) : null;
-				console.log(this.beepSound);
 				return this.parent(...arguments); // The original function returns a value, so you have to return the parent call, otherwise there'll be an error.
 			}
 		});
@@ -211,6 +214,42 @@ export default class VoiceMod extends Plugin
 				console.log(this);
 			}
 		});*/
+		
+		sc.MessageModel.inject({
+			showMessage: function(a, b, c)
+			{
+				this.boardSide || this.clearBoardMsg();
+				this._checkActivePerson(a);
+				this.blocking = true;
+				this.autoContinue = c;
+				ig.interact.addEntry(this.screenInteract);
+				ig.interact.setBlockDelay(0.1);
+				sc.Model.notifyObserver(this, sc.MESSAGE_EVENT.NEW_MESSAGE,
+				{
+					name: a,
+					text: b
+				});
+				if(a = this.currentPeople[a])
+				{
+					if(mod.bestva)
+						sc.voiceActing.play(a.charExpression, b);
+					this.showSideMessage(a.charExpression, b, true)
+				}
+			}
+		});
+	}
+	
+	_injectMain(mod)
+	{
+		ig.EVENT_STEP.SHOW_MSG.inject({
+			init: function()
+			{
+				this.parent(...arguments);
+				
+				if(sc.voiceActing.active)
+					this.beep = false;
+			}
+		});
 	}
 	
 	_getPacks()
