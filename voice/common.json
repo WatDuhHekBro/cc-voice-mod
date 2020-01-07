@@ -1,11 +1,14 @@
 {
-	"external:media/sound/va/lea/hi.ogg":
+	"special:database":
 	{
-		"database": [0],
-		"rhombus-sqr/dng-end": [13,39,56]
+		"external:media/sound/va/lea/hi.ogg": [0]
 	},
-	"silence":
+	"cargo-ship/ship":
 	{
-		"cargo-ship/ship": [269]
+		"special:silence": [269]
+	},
+	"rhombus-sqr/dng-end":
+	{
+		"hi": [13,39,56]
 	}
 }

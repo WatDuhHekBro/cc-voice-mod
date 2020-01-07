@@ -14,12 +14,28 @@ This mod is an attempt to revive the voice acting mod (the code part at least). 
 
 # Other Features
 - Previous voices are cut off when you move onto the next line. This means the player doesn't have to wait for a voice line to be finished to not have multiple voices going on at the same time. `Skip Cutscene` also won't overload on voices because of this.
-- Dialogue beeps only appear when there is no voice and the line isn't declared silent in `common.json` (The `common.json` part is Coming Soon™).
+- Dialogue beeps only appear when there is no voice and the line isn't declared silent in `common.json`.
 - Added language support (which will override default language files, directory is `voice/lang/<LangID>/...`). While using `en_US` might sound redundant, it's important to remember that the default `voice/` directory doesn't have a language preference, which functions as a fallback in case there is no specific language setting set.
 	- For example, if a [Korean modder](https://github.com/2hh8899) were to create content and add voices in their native language, they would use the default directory as that would best capture the author's original intent for the scenes. Then, you could add lines to `en_US`. In the case where `en_US` doesn't show up, the original voice files serve as a fallback.
 
+# Overriding & Precedence
+Since one of the goals of this mod is to allow for many people to submit their own voice packs, there will have to be rules on overriding due to potential conflicts.
+
+Within each voice pack, there are 2 layers of precedence.
+1. This level of precedence is based upon the current language setting the player has enabled, found in `voice/lang/<LangID>/`. It will override the main voice line, but only if the user has the same language selected.
+2. This level of precedence is the default one, and is useful for a centralized community voice acting pack, where everything is already decided.
+
+And when looking outward, there are 3 layers of precedence, with each layer following the rules described above.
+1. Other mods can add voices by adding a `voice/` directory in their mod folder. These will override packs and the main `voice/` directory, but are not recommended for that purpose. Instead, they're meant to serve voice files for their own mod.
+2. Packs, found in the `packs/` directory, are meant to serve as addons, which are meant to be focused on one particular aspect, e.g. a character's voice.
+3. Last, but definitely not least, is the actual main `voice/` directory itself. This is recommended for most purposes.
+
+When considering which order/precedence level to use, you should start with the bottom and work your way up only when you have a valid reason to do so. When in doubt, just use the lowest precedence.
+
+# common.json
+*Coming Soon™*
+
 # TODO List (There's a lot that isn't done yet!)
-- Implement `common.json`.
 - Add database support/detection.
 - Add support for external voices in mods. (Same file structure, your mods will override what's in va-test. That way, you can contribute to a larger project by basically adding your own sound packs. I'll have to figure out load order first. And you could always host your own sound packs elsewhere (ie Google Drive) because GitHub doesn't like binary files, also you get to change them. If there ever is a community sound pack, it'll probably be hosted not on GitHub. And ofc, merging multiple common.json files is going to be tough.)
 	- Treat every pack the same in the code to make it easier.
@@ -35,3 +51,6 @@ This mod is an attempt to revive the voice acting mod (the code part at least). 
 - Maybe add support for people who want to reroute the `voice/` directory in their own mods.
 - Get OBS to work with CCLoader
 - Maybe work on an Audacity plugin to make splitting voice files easier and more systematic.
+- Clean up this readme (only do this once you've finished adding all of the core features).
+- Add the possibility of adding voice to all messages with langUids, including off screen messages (which can be voiced with distant or echo-ish features), since everything's based on langUids.
+- Maybe add a try-catch statement when dealing with `common.json` to allow for user errors instead of crashing the game?

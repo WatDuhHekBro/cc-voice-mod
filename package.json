@@ -1,13 +1,9 @@
 {
 	"name": "voice-mod",
-	"version": "0.1.3",
+	"version": "0.2.0",
 	"description": "An attempt at reconstructing the CCVoiceActing mod from the ground up.",
 	"homepage": "https://github.com/WatDuhHekBro/voice-mod",
 	"plugin": "plugin.js",
 	"module": false,
-	"preload": "preload.js",
-	"postload": "postload.js",
-	"prestart": "prestart.js",
-	"main": "mod.js",
 	"ccmodDependencies": {}
 }
