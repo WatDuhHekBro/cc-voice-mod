@@ -39,9 +39,6 @@ When considering which order/precedence level to use, you should start with the 
 - Add database support/detection.
 - Add support for side messages and off-screen messages.
 	- Add the possibility of adding voice to all messages with langUids, including off screen messages (which can be voiced with distant or echo-ish features), since everything's based on langUids. This would also allow narration... meh ¯\\\_(ツ)_/¯.
-- Maybe add a try-catch statement when dealing with `common.json` to allow for user errors instead of crashing the game?
-	- You have to check whether `common.json` exists before trying to add it. And yes, implement that try-catch so you can get a custom error message telling the player it's `common.json`, not the code itself.
-	- Do make sure to check if a file exists before attempting to use it, this part isn't fool-proof.
 
 # TODO Other
 - Clean up this readme (only do this once you've finished adding all of the core features).

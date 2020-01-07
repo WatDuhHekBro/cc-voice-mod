@@ -67,6 +67,7 @@ export default class VoiceMod extends Plugin
 		// common.json overriding works like this: You have your object and add onto it based on the order of this.DIRECTORIES. If a property exists in the index of this.DIRECTORIES, then overwrite it.
 		this.COMMON = await this._getCommons(); // Async Main Required
 		this._injectMain(this);
+		console.log(this);
 	}
 	
 	// "mod" will be used to reference the plugin while injecting code since "this" no longer references the plugin while inside those code blocks.
@@ -244,7 +245,7 @@ export default class VoiceMod extends Plugin
 			var arg = sound.substring(sound.indexOf(':')+1);
 			
 			// "external" will allow the user to access mods outside the "common" folder.
-			if(protocol === 'external')
+			if(protocol === 'external' && fs.existsSync(path.join('assets/', arg)))
 				return arg;
 			else if(protocol === 'special')
 			{
@@ -274,14 +275,26 @@ export default class VoiceMod extends Plugin
 	
 	async _getCommons()
 	{
-		var packs = [await simplify.resources.loadJSON(path.join(this.RELATIVE_DIR, this.VOICE_DIR, this.COMMON_FILE))];
+		var packs = [];
 		
-		for(var i = 1; i < this.PACKS.length; i++)
+		for(var i = 0; i < this.PACKS.length; i++)
 		{
-			if(fs.existsSync(path.join(this.BASE_DIR, this.PACKS_DIR, this.PACKS[i], this.COMMON_FILE)))
-				packs.push(await simplify.resources.loadJSON(path.join(this.RELATIVE_DIR, this.PACKS_DIR, this.PACKS[i], this.COMMON_FILE)));
-			else
-				packs.push(null);
+			var pack = this.PACKS[i] ? this.PACKS_DIR + this.PACKS[i] : this.VOICE_DIR;
+			
+			if(fs.existsSync(path.join(this.BASE_DIR, pack, this.COMMON_FILE)))
+			{
+				try
+				{
+					packs.push(await simplify.resources.loadJSON(path.join(this.RELATIVE_DIR, pack, this.COMMON_FILE)));
+					continue;
+				}
+				catch(error)
+				{
+					console.error("ERROR: Something's wrong with " + path.join(this.BASE_DIR, pack, this.COMMON_FILE) + "! Use a JSON parser to make sure the file itself is good to go before sending it in a bug report.");
+				}
+			}
+			
+			packs.push(null);
 		}
 		
 		return packs;
