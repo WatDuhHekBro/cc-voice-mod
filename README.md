@@ -20,6 +20,7 @@ This mod is an attempt to revive the voice acting mod (the code part at least). 
 - Packs have the same file structure, your mods will override what's in va-test. That way, you can contribute to a larger project by basically adding your own sound packs. I'll have to figure out load order first. And you could always host your own sound packs elsewhere (ie Google Drive) because GitHub doesn't like binary files, also you get to change them. If there ever is a community sound pack, it'll probably be hosted not on GitHub.
 - Added support for the Best-VA bonus code, meaning the voices from this mod and Best-VA doesn't conflict.
 - The messages in `database.json` have their own directory, `database/`.
+- There's also support for side, offscreen, and dream messages.
 
 # Overriding & Precedence
 Since one of the goals of this mod is to allow for many people to submit their own voice packs, there will have to be rules on overriding due to potential conflicts.
@@ -36,16 +37,12 @@ When considering which order/precedence level to use, you should start with the 
 
 # common.json
 - In case one of the `common.json` files isn't working, an error will appear on the screen letting you know the directory of the malformed one.
+
 *Coming Soon™*
 
-# TODO List (There's some stuff that has yet to be done)
-- Add support for side messages and off-screen messages.
-	- Add the possibility of adding voice to all messages with langUids, including off screen messages (which can be voiced with distant or echo-ish features), since everything's based on langUids. This would also allow narration... meh ¯\\\_(ツ)_/¯.
-
-# TODO Other
+# TODO Finalization
 - Clean up this readme (only do this once you've finished adding all of the core features).
 - Clean up the code and comments. The README's final form (when cleaned up) should look like professional documentation on how to use its features rather than a brain dump.
-- Maybe work on an Audacity plugin to make splitting voice files easier and more systematic.
 
 # Cancelled Features
 - A system to allow for every modder to set up a voice pack in their own modding directory. This was planned with the intention of allowing modders to add voices to their own mods. This would've allowed other mods to have self-contained voices that came with the package.
@@ -54,3 +51,11 @@ When considering which order/precedence level to use, you should start with the 
 	- I decided to cancel this feature because it didn't fit the design perspective of this mod (also I was too lazy to implement it). But for the most part, I think it'd be better to have a separate mod which basically uses the system Best-VA provides instead of reinventing the wheel. The voice mod is meant to provide specificity rather than generality.
 - A feature in `common.json` which would've allowed the user to use a wildcard `"*"` instead of an array of langUids to apply a certain sound to all messages (maybe even ones without langUids) unless otherwise specified. You could make entire maps silent with this for example.
 	- This mostly would've been used to make entire maps silent. Another cancelled feature related to this would be the ability to toggle whether beeps should play at all. I'm thinking that a separate mod to handle this case would be better.
+- The ability to add voices to all messages with langUids. This would've allowed for narration of certain messages (like debug or tutorial messages), and overall more versatility.
+	- This isn't completely cancelled, as I might end up adding it in the future, but I've decided to put this out of the scope of the main release. The ones that make the most sense to add voices to are `SHOW_MSG`, `SHOW_SIDE_MSG`, `SHOW_OFFSCREEN_MSG`, and `SHOW_DREAM_MSG`. As for the message model itself, it has insane levels of abstraction I just don't understand. What'd you would've missed though is the following:
+		- `SHOW_AR_MSG`: Stuff like the Login and Logout text.
+		- `SHOW_BOARD_MSG`: What shows up in Direct Links.
+		- `SHOW_CENTER_MSG`: "Update your save file!"
+		- `SHOW_GET_MSG`: Getting more SP, getting an item, etc.
+		- `SHOW_TUTORIAL_MSG`: Tutorial stuff.
+		- `SHOW_TUTORIAL_PLAYER_MSG`: Tutorial stuff.
