@@ -1,7 +1,7 @@
 {
 	"special:database":
 	{
-		"external:media/sound/va/lea/hi.ogg": [0]
+		"hi": [14778]
 	},
 	"cargo-ship/ship":
 	{
@@ -13,6 +13,6 @@
 	},
 	"hideout/entrance":
 	{
-		"external:media/sound/va/lea/hi.ogg": [4,5,6]
+		"external:media/sound/va/lea/hi": [4,5,6]
 	}
 }

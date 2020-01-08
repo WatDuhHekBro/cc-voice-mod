@@ -18,6 +18,8 @@ This mod is an attempt to revive the voice acting mod (the code part at least). 
 - Added language support (which will override default language files, directory is `voice/lang/<LangID>/...`). While using `en_US` might sound redundant, it's important to remember that the default `voice/` directory doesn't have a language preference, which functions as a fallback in case there is no specific language setting set.
 	- For example, if a [Korean modder](https://github.com/2hh8899) were to create content and add voices in their native language, they would use the default directory as that would best capture the author's original intent for the scenes. Then, you could add lines to `en_US`. In the case where `en_US` doesn't show up, the original voice files serve as a fallback.
 - Packs have the same file structure, your mods will override what's in va-test. That way, you can contribute to a larger project by basically adding your own sound packs. I'll have to figure out load order first. And you could always host your own sound packs elsewhere (ie Google Drive) because GitHub doesn't like binary files, also you get to change them. If there ever is a community sound pack, it'll probably be hosted not on GitHub.
+- Added support for the Best-VA bonus code, meaning the voices from this mod and Best-VA doesn't conflict.
+- The messages in `database.json` have their own directory, `database/`.
 
 # Overriding & Precedence
 Since one of the goals of this mod is to allow for many people to submit their own voice packs, there will have to be rules on overriding due to potential conflicts.
@@ -33,17 +35,16 @@ And when looking outward, there are 2 layers of precedence, with each layer foll
 When considering which order/precedence level to use, you should start with the bottom and work your way up only when you have a valid reason to do so. When in doubt, just use the lowest precedence.
 
 # common.json
+- In case one of the `common.json` files isn't working, an error will appear on the screen letting you know the directory of the malformed one.
 *Coming Soon™*
 
 # TODO List (There's some stuff that has yet to be done)
-- Add database support/detection.
 - Add support for side messages and off-screen messages.
 	- Add the possibility of adding voice to all messages with langUids, including off screen messages (which can be voiced with distant or echo-ish features), since everything's based on langUids. This would also allow narration... meh ¯\\\_(ツ)_/¯.
 
 # TODO Other
 - Clean up this readme (only do this once you've finished adding all of the core features).
 - Clean up the code and comments. The README's final form (when cleaned up) should look like professional documentation on how to use its features rather than a brain dump.
-- Get OBS to work with CCLoader.
 - Maybe work on an Audacity plugin to make splitting voice files easier and more systematic.
 
 # Cancelled Features

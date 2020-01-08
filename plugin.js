@@ -21,6 +21,7 @@ export default class VoiceMod extends Plugin
 	- beep (Boolean): Determines whether the text makes sound whenever it progresses. Turned off for lines with voice or lines that are declared silent.
 	- bestva (Boolean)
 	
+	<< Move this section into the README when you're in the final stage >>
 	[Directories] (Set in order of reverse precedence so that when looping through the list, later settings overwrite previous settings.)
 	assets/mods/voice-mod/voice/...
 	assets/mods/voice-mod/packs/<pack>/...
@@ -29,8 +30,6 @@ export default class VoiceMod extends Plugin
 	["demo-pack", ...]
 	Then just use assets/mods/voice-mod/packs/demo-pack/...
 	*/
-	
-	// Database: ig.EVENT_STEP.TRIGGER_COMMON_EVENTS?
 	
 	constructor(mod)
 	{
@@ -53,9 +52,13 @@ export default class VoiceMod extends Plugin
 	}
 	
 	// Order: Constructor, Preload-Async, Preload, Postload-Async, Postload, Prestart-Async, Prestart, Main-Async, Main.
-	// Injecting works in Prestart and Main.
+	// Injecting works in Prestart and Main. AJAX Requests work in Postload, Prestart, and Main.
 	async preload() {}
-	async postload() {}
+	async postload()
+	{
+		// common.json overriding works like this: You have your object and add onto it based on the order of this.DIRECTORIES. If a property exists in the index of this.DIRECTORIES, then overwrite it.
+		this.COMMON = await this._getCommons(); // Async Main Required
+	}
 	
 	async prestart()
 	{
@@ -64,8 +67,6 @@ export default class VoiceMod extends Plugin
 	
 	async main()
 	{
-		// common.json overriding works like this: You have your object and add onto it based on the order of this.DIRECTORIES. If a property exists in the index of this.DIRECTORIES, then overwrite it.
-		this.COMMON = await this._getCommons(); // Async Main Required
 		this._injectMain(this);
 		console.log(this);
 	}
@@ -73,13 +74,14 @@ export default class VoiceMod extends Plugin
 	// "mod" will be used to reference the plugin while injecting code since "this" no longer references the plugin while inside those code blocks.
 	_inject(mod)
 	{
+		// It is CRITICAL to have this in prestart in order to detect database entries! Prestart is when database entries load and when you can detect where a message is from. //
 		ig.EVENT_STEP.SHOW_MSG.inject({
 			voice: null,
 			beep: true,
 			init: function()
 			{
 				this.parent(...arguments);
-				this.voice = mod._getVoice(this.message.data.langUid); // This is placed after the parent code because you need to initialize this.message first.
+				this.voice = mod._getVoice(this.message); // This is placed after the parent code because you need to initialize this.message first.
 				// Retain whether or not this message should beep and reset beep to allow for beeps on non-SHOW_MSG messages.
 				this.beep = mod.beep;
 				mod.beep = true;
@@ -144,15 +146,6 @@ export default class VoiceMod extends Plugin
 				this.parent(...arguments);
 				//console.log(this);
 			}
-		});
-		
-		// Database
-		sc.CommonEvents.inject({
-			triggerEvent: function()
-			{
-				this.parent(...arguments);
-				console.log(this);
-			}
 		});*/
 		
 		sc.MessageModel.inject({
@@ -192,32 +185,47 @@ export default class VoiceMod extends Plugin
 		});
 	}
 	
-	_getVoice(langUid) // langUid is either undefined or a number
+	_getVoice(message)
 	{
 		// Potential problems with database entries!
 		var map = ig.game.mapName; // ie hideout.entrance
 		var lang = ig.currentLang; // en_US, de_DE, zh_CN, ja_JP, ko_KR, etc.
+		var langUid = message.data.langUid; // Either undefined or a number
+		var originFile = message.originFile; // Either null or a string
 		var src;
 		
-		if(langUid && map) // If langUid !== undefined && map !== undefined/null
+		if(langUid) // If langUid !== undefined
 		{
-			map = map.replace(/\./g,'/'); // ie hideout.entrance --> hideout/entrance, placed here just in case map is undefined (like if you're in the title screen).
-			// The order here is based on precedence. A language setting overrides the default case, but the default case overrides common events (with the logic that if you're declaring a specific sound file, it should override commonly used ones which might be there by mistake).
+			var route = ''; // Just in case neither of the 2 cases below pass.
+			
+			// The Database Case //
+			if(originFile === 'data/database.json')
+			{
+				route = this.DATABASE_DIR;
+				map = 'special:database'; // In this case, map will become solely the index of common.json.
+			}
+			// The Map Case //
+			else if(map) // If map !== undefined/null
+			{
+				map = map.replace(/\./g,'/'); // ie hideout.entrance --> hideout/entrance, placed here just in case map is undefined (like if you're in the title screen).
+				route = this.MAPS_DIR + map;
+			}
 			
 			// Loops through the main directory and all the packs. Later entries will override previous entries.
 			for(var i = 0; i < this.PACKS.length; i++)
 			{
 				var pack = this.PACKS[i] ? this.PACKS_DIR + this.PACKS[i] : this.VOICE_DIR;
 				
-				// The "Specific Language" (Map) Case
-				if(fs.existsSync(path.join(this.BASE_DIR, pack, this.LANG_DIR, lang, this.MAPS_DIR, map, langUid + '.ogg'))) // ie "assets/mods/<MOD_NAME>/voice/maps/hideout/entrance/#.ogg" exists
-					src = path.join(this.RELATIVE_DIR, pack, this.LANG_DIR, lang, this.MAPS_DIR, map, langUid + '.ogg');
-				// The "Map" Case
-				else if(fs.existsSync(path.join(this.BASE_DIR, pack, this.MAPS_DIR, map, langUid + '.ogg'))) // ie "assets/mods/<MOD_NAME>/voice/maps/hideout/entrance/#.ogg" exists
-					src = path.join(this.RELATIVE_DIR, pack, this.MAPS_DIR, map, langUid + '.ogg');
-				// The "common.json" (Map) Case
+				// The order here is based on precedence. A language setting overrides the default case, but the default case overrides common events (with the logic that if you're declaring a specific sound file, it should override commonly used ones which might be there by mistake).
+				// The Specific Language Case //
+				if(fs.existsSync(path.join(this.BASE_DIR, pack, this.LANG_DIR, lang, route, langUid + '.ogg'))) // ie "assets/mods/<MOD_NAME>/voice/maps/hideout/entrance/#.ogg" exists
+					src = path.join(this.RELATIVE_DIR, pack, this.LANG_DIR, lang, route, langUid + '.ogg');
+				// The General Case
+				else if(fs.existsSync(path.join(this.BASE_DIR, pack, route, langUid + '.ogg'))) // ie "assets/mods/<MOD_NAME>/voice/maps/hideout/entrance/#.ogg" exists
+					src = path.join(this.RELATIVE_DIR, pack, route, langUid + '.ogg');
+				// The common.json Case
 				// WARNING: Until you merge all common.json files, this will be called multiple times (base + # of packs).
-				else if(this.COMMON[i] && this.COMMON[i][map]) // ie If a common.json entry of "hideout/entrance" exists. This works on everything except "special:database" which will be its own case.
+				else if(this.COMMON[i] && this.COMMON[i][map]) // ie If a common.json entry of "hideout/entrance" exists.
 				{
 					// Loop through the sounds defined in each map.
 					for(var sound in this.COMMON[i][map])
@@ -245,8 +253,8 @@ export default class VoiceMod extends Plugin
 			var arg = sound.substring(sound.indexOf(':')+1);
 			
 			// "external" will allow the user to access mods outside the "common" folder.
-			if(protocol === 'external' && fs.existsSync(path.join('assets/', arg)))
-				return arg;
+			if(protocol === 'external' && fs.existsSync(path.join('assets/', arg + '.ogg')))
+				return arg + '.ogg';
 			else if(protocol === 'special')
 			{
 				if(arg === 'silence')
@@ -285,7 +293,7 @@ export default class VoiceMod extends Plugin
 			{
 				try
 				{
-					packs.push(await simplify.resources.loadJSON(path.join(this.RELATIVE_DIR, pack, this.COMMON_FILE)));
+					packs.push(await this._loadJSON(path.join(this.RELATIVE_DIR, pack, this.COMMON_FILE)));
 					continue;
 				}
 				catch(error)
@@ -298,5 +306,26 @@ export default class VoiceMod extends Plugin
 		}
 		
 		return packs;
+	}
+	
+	// Usage: await this._loadJSON('mods/voice-mod/package.json');
+	async _loadJSON(path)
+	{
+		/*
+		$.ajax({
+			dataType: 'json',
+			url: path,
+			success: (val) => {},
+			error: (xhr) => {console.error(`Error ${xhr.status}: Could not load "${path}"`);}
+		});
+		*/
+		
+		var a = $.ajax({
+			dataType: 'json',
+			url: path,
+			success: (val) => {return val;},
+			error: (xhr) => {console.error(`Error ${xhr.status}: Could not load "${path}"`);}
+		});
+		return a;
 	}
 }
