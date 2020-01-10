@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-// In the future, see if there's a way to do all this asynchronously. It's not good to hold up the system like this.
 
 export default class VoiceMod extends Plugin
 {
@@ -19,45 +18,38 @@ export default class VoiceMod extends Plugin
 	- LANG_DIR (String): The subdirectory used for implementing voices on different languages. Must be the same across all voice packs!
 	- COMMON (Array of Objects): Contains commonly used events for reused dialogue and/or silent dialogue (no sound, no beeps).
 	- beep (Boolean): Determines whether the text makes sound whenever it progresses. Turned off for lines with voice or lines that are declared silent.
-	- bestva (Boolean)
-	
-	<< Move this section into the comments in this._getVoice() when you're in the final stage >>
-	[Directories] (Set in order of reverse precedence so that when looping through the list, later settings overwrite previous settings.)
-	assets/mods/voice-mod/voice/...
-	assets/mods/voice-mod/packs/<pack>/...
-	
-	It doesn't make sense to have a different object for keeping track of all the packs. Instead, it'll just be an array of pack names, the rest of the path is already taken care of.
-	["demo-pack", ...]
-	Then just use assets/mods/voice-mod/packs/demo-pack/...
+	- bestva (Boolean): If bestva is being used, disable all beeps.
 	*/
+	
+	// In the future, maybe see if there's a way to do all this asynchronously. It's not good to hold up the system like this.
 	
 	// Order: Constructor, Preload-Async, Preload, Postload-Async, Postload, Prestart-Async, Prestart, Main-Async, Main.
 	// Injecting works in Prestart and Main. AJAX Requests work in Postload, Prestart, and Main.
 	constructor(mod)
 	{
 		super(mod);
-		//this.mod = mod; // Do I need this if I already initialized all the required variables?
 		this.MOD_NAME = mod.name;
 		this.BASE_DIR = mod.baseDirectory;
 		this.RELATIVE_DIR = this.BASE_DIR.substring(7); // Gets rid of "assets/".
 		this.VOICE_DIR = 'voice/';
 		this.PACKS_DIR = 'packs/';
 		this.PACKS = this._getPacks();
-		// These will remain the same for the main voices and packs.
 		this.COMMON_FILE = 'common.json';
 		this.COMMON_DIR = 'common/';
 		this.DATABASE_DIR = 'database/';
 		this.MAPS_DIR = 'maps/';
 		this.LANG_DIR = 'lang/';
 		this.beep = true;
-		this.bestva = false; // If bestva is being used, disable all beeps.
+		this.bestva = false;
 	}
 	
-	async preload() {}
+	async preload()
+	{
+		
+	}
 	
 	async postload()
 	{
-		// common.json overriding works like this: You have your object and add onto it based on the order of this.DIRECTORIES. If a property exists in the index of this.DIRECTORIES, then overwrite it.
 		this.COMMON = await this._getCommons();
 	}
 	
@@ -74,7 +66,7 @@ export default class VoiceMod extends Plugin
 	// "mod" will be used to reference the plugin while injecting code since "this" no longer references the plugin while inside those code blocks.
 	_inject(mod)
 	{
-		// It is CRITICAL to have this in prestart in order to detect database entries! Prestart is when database entries load and when you can detect where a message is from. //
+		// It is CRITICAL to have this in prestart in order to detect database entries! Prestart is when database entries load and when you can detect where a message is from.
 		ig.EVENT_STEP.SHOW_MSG.inject({
 			voice: null,
 			beep: true,
@@ -185,7 +177,7 @@ export default class VoiceMod extends Plugin
 			}
 		});
 		
-		// Redefine PLAY_SOUND to allow for named sounds without requiring that those sounds are looped. This creates the problem that adding named sounds could clog up memory without knowing about it (since you don't have the sound on loop to receive feedback about it). Luckily, this actually solves two problems at once: By clearing previous voice sounds upon starting a new SHOW_MSG event, you avoid the memory clog on the ig.soundManager.namedSounds stack as well as have the ability to stop previous dialogue should the player want to skip over certain lines of dialogue. At worst, you'll be stuck with one unused voice sound which'll clear on the next message or transition to another room. //
+		// Redefine PLAY_SOUND to allow for named sounds without requiring that those sounds are looped. This creates the problem that adding named sounds could clog up memory without knowing about it (since you don't have the sound on loop to receive feedback about it). Luckily, this actually solves two problems at once: By clearing previous voice sounds upon starting a new SHOW_MSG event, you avoid the memory clog on the ig.soundManager.namedSounds stack as well as have the ability to stop previous dialogue should the player want to skip over certain lines of dialogue. At worst, you'll be stuck with one unused voice sound which'll clear on the next message or transition to another room.
 		ig.EVENT_STEP.PLAY_SOUND.inject({
 			start: function()
 			{
@@ -219,6 +211,16 @@ export default class VoiceMod extends Plugin
 				return this.parent(...arguments); // The original function returns a value, so you have to return the parent call, otherwise there'll be an error.
 			}
 		});
+		
+		// Consider injecting into sc.TextGui. This accounts for both SHOW_MSG and SHOW_SIDE_MSG beeps.
+		/*sc.TextGui.inject({
+			update: function()
+			{
+				if(mod.beepSound && mod.beepSound.constructor === Array)
+					this.beepSound = mod.beepSound[mod._getRandom(0, mod.beepSound.length)];
+				this.parent(...arguments);
+			}
+		});*/
 		
 		// Disable beeps for side messages
 		sc.SideMessageBoxGui.inject({
@@ -277,6 +279,17 @@ export default class VoiceMod extends Plugin
 		});
 	}
 	
+	/*
+	[Directories]
+	Set in order of reverse precedence so that when looping through the list, later settings overwrite previous settings.
+	assets/mods/voice-mod/voice/...
+	assets/mods/voice-mod/packs/<pack>/...
+	
+	It doesn't make sense to have a different object for keeping track of all the packs. Instead, it'll just be an array of pack names, the rest of the path is already taken care of.
+	["demo-pack", ...]
+	Then just use assets/mods/voice-mod/packs/demo-pack/...
+	*/
+	
 	_getVoice(message)
 	{
 		var map = ig.game.mapName; // ie hideout.entrance
@@ -302,12 +315,13 @@ export default class VoiceMod extends Plugin
 				route = this.MAPS_DIR + map;
 			}
 			
-			// Loops through the main directory and all the packs. Later entries will override previous entries.
+			// Loops through the main directory and all the packs. Later entries will override previous entries, which is how common.json files will be sorted out.
 			for(var i = 0; i < this.PACKS.length; i++)
 			{
 				var pack = this.PACKS[i] ? this.PACKS_DIR + this.PACKS[i] : this.VOICE_DIR;
 				
 				// The order here is based on precedence. A language setting overrides the default case, but the default case overrides common events (with the logic that if you're declaring a specific sound file, it should override commonly used ones which might be there by mistake).
+				
 				// The Specific Language Case //
 				if(fs.existsSync(path.join(this.BASE_DIR, pack, this.LANG_DIR, lang, route, langUid + '.ogg'))) // ie "assets/mods/<MOD_NAME>/voice/maps/hideout/entrance/#.ogg" exists
 					src = path.join(this.RELATIVE_DIR, pack, this.LANG_DIR, lang, route, langUid + '.ogg');
@@ -315,7 +329,6 @@ export default class VoiceMod extends Plugin
 				else if(fs.existsSync(path.join(this.BASE_DIR, pack, route, langUid + '.ogg'))) // ie "assets/mods/<MOD_NAME>/voice/maps/hideout/entrance/#.ogg" exists
 					src = path.join(this.RELATIVE_DIR, pack, route, langUid + '.ogg');
 				// The common.json Case
-				// WARNING: Until you merge all common.json files, this will be called multiple times (base + # of packs).
 				else if(this.COMMON[i] && this.COMMON[i][map]) // ie If a common.json entry of "hideout/entrance" exists.
 				{
 					// Loop through the sounds defined in each map.
@@ -349,7 +362,7 @@ export default class VoiceMod extends Plugin
 			else if(protocol === 'special')
 			{
 				if(arg === 'silence')
-					this.beep = false; // Temporarily set beep to false to access this setting outside of 
+					this.beep = false; // Temporarily set beep to false to access this setting outside of the scope of this function.
 				// Add future cases
 			}
 		}
@@ -361,10 +374,10 @@ export default class VoiceMod extends Plugin
 	{
 		// The idea behind putting a null as the first item in packs is that when looping through these packs, the first one will route to "voice/".
 		var packs = [null];
-		// Reads what's in "assets/mods/<MOD_NAME>/packs/" if "packs/" exists. ie ["demo-pack"] //
+		// Reads what's in "assets/mods/<MOD_NAME>/packs/" if "packs/" exists. ie ["demo-pack"]
 		var list = fs.existsSync(path.join(this.BASE_DIR, this.PACKS_DIR)) ? fs.readdirSync(path.join(this.BASE_DIR, this.PACKS_DIR)) : [];
 		
-		// For each entry in "packs/", if it's a folder, then add it to packs. //
+		// For each entry in "packs/", if it's a folder, then add it to packs.
 		for(var i = 0; i < list.length; i++)
 			if(fs.statSync(path.join(this.BASE_DIR, this.PACKS_DIR, list[i])).isDirectory())
 				packs.push(list[i]);
@@ -402,21 +415,11 @@ export default class VoiceMod extends Plugin
 	// Usage: await this._loadJSON('mods/voice-mod/package.json');
 	async _loadJSON(path)
 	{
-		/*
-		$.ajax({
-			dataType: 'json',
-			url: path,
-			success: (val) => {},
-			error: (xhr) => {console.error(`Error ${xhr.status}: Could not load "${path}"`);}
-		});
-		*/
-		
-		var a = $.ajax({
+		return $.ajax({
 			dataType: 'json',
 			url: path,
 			success: (val) => {return val;},
 			error: (xhr) => {console.error(`Error ${xhr.status}: Could not load "${path}"`);}
-		});
-		return a;
+		});;
 	}
 }

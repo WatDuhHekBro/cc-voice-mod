@@ -1,14 +1,16 @@
 # Voice Mod
 This mod is an attempt to revive the voice acting mod (the code part at least). It has a different structure and setup compared to the voice acting mod, notably on the usage of langUids to locate messages (you can't add voices to messages without langUids) and the emphasis of allowing others to add their own content packs.
 
+This page will give you an overview on the design goals of the mod and what has changed from CCVA. This will NOT serve as **documentation on how to use this mod**, which can be found [here](https://github.com/WatDuhHekBro/voice-mod/blob/master/Documentation.md).
+
 # Major Changes from [CCVoiceActing](https://github.com/CCDirectLink/CCVoiceacting)
 - **Structural:** Instead of loading a file table that defines where to split each track and which langUids to apply each segment to, sound files are loaded automatically upon playing a new message with a langUid.
 	- The downside to this is that the user has to manually split lines using a tool like [Audacity](https://www.audacityteam.org/).
 	- The upside to this is that the user doesn't have to manually add in entries in some definitions file.
-- **Implementation:** The plan is to have one centralized location and allow for content packs to be installed in addition. There are 2 ways to add voices:
-	- The first and most simple is to add voices to the centralized `voice/` directory. This is useful in case there's a centralized pack.
+- **Implementation:** The goal is to have one centralized location and allow for content packs to be installed in addition. There are 2 ways to add voices:
+	- The first and most simple is to add voices to the centralized `voice/` directory. This is useful in case there's a standardized pack agreed on by the community. This is likely what the `sounds/` folder in CCVA would've been.
 	- The second is to add voice packs to the `packs/` directory. The structure of each pack is the same as the `voice/` directory, as including `voice/` itself would be redundant. Its purpose is to allow for many people to add their own voice packs without the user having to worry about merging conflicts.
-		- For example, let's say that there is a community voice acting pack that you're using, installed in the `voice/` directory. But say that someone else created voices for Lea that you like better than the one in the community pack. You would install this secondary voice pack in `packs/` and could have the voice in `packs/` overwrite the community pack without having to replace files.
+		- For example, let's say that there is a community voice acting pack that you're using, installed in the `voice/` directory. But say that someone else created voices for a character that you like better than the one in the community pack. You would install this secondary voice pack in `packs/` and could have the voice in `packs/` overwrite the community pack without having to replace files.
 		- This is also where you'd place voice packs for other mods if there are any.
 - To avoid having to copy paste certain lines that are commonly used, a `common.json` table will be used to either select a common sound and apply it to or silence the selected lines.
 
@@ -17,32 +19,23 @@ This mod is an attempt to revive the voice acting mod (the code part at least). 
 - Dialogue beeps only appear when there is no voice and the line isn't declared silent in `common.json`.
 - Added language support (which will override default language files, directory is `voice/lang/<LangID>/...`). While using `en_US` might sound redundant, it's important to remember that the default `voice/` directory doesn't have a language preference, which functions as a fallback in case there is no specific language setting set.
 	- For example, if a [Korean modder](https://github.com/2hh8899) were to create content and add voices in their native language, they would use the default directory as that would best capture the author's original intent for the scenes. Then, you could add lines to `en_US`. In the case where `en_US` doesn't show up, the original voice files serve as a fallback.
-- Packs have the same file structure, your mods will override what's in va-test. That way, you can contribute to a larger project by basically adding your own sound packs. I'll have to figure out load order first. And you could always host your own sound packs elsewhere (ie Google Drive) because GitHub doesn't like binary files, also you get to change them. If there ever is a community sound pack, it'll probably be hosted not on GitHub.
+- Packs have the same file structure which will overwrite the main folder. That way, you can contribute to a larger project by basically adding your own sound packs, kind of like GitHub forks and pull requests. And you could always host your own sound packs elsewhere (ie Google Drive) because GitHub doesn't like binary files, also you get to change them. If there ever is a community sound pack, it should be hosted somewhere else.
 - Added support for the Best-VA bonus code, meaning the voices from this mod and Best-VA doesn't conflict.
 - The messages in `database.json` have their own directory, `database/`.
-- There's also support for side, offscreen, and dream messages.
+- There's currently support for main, side, offscreen, and dream messages.
 
 # Overriding & Precedence
 Since one of the goals of this mod is to allow for many people to submit their own voice packs, there will have to be rules on overriding due to potential conflicts.
 
-Within each voice pack, there are 2 layers of precedence.
+Within each voice pack, with the load order being case-insensitive alphabetical, there are 2 layers of precedence.
 1. This level of precedence is based upon the current language setting the player has enabled, found in `voice/lang/<LangID>/`. It will override the main voice line, but only if the user has the same language selected.
-2. This level of precedence is the default one, and is useful for a centralized community voice acting pack, where everything is already decided.
+2. This level of precedence is the default one, and is useful for a centralized community voice acting pack, where everything is already agreed upon.
 
 And when looking outward, there are 2 layers of precedence, with each layer following the rules described above.
-1. Packs, found in the `packs/` directory, are meant to serve as addons, which are meant to be focused on one particular aspect, e.g. a character's voice.
+1. Packs, found in the `packs/` directory, are meant to serve as addons, which are meant to be focused on one particular aspect like a character's voice, or adding voices for a specific mod.
 2. Last, but definitely not least, is the actual main `voice/` directory itself. This is recommended for most purposes.
 
 When considering which order/precedence level to use, you should start with the bottom and work your way up only when you have a valid reason to do so. When in doubt, just use the lowest precedence.
-
-# common.json
-- In case one of the `common.json` files isn't working, an error will appear on the screen letting you know the directory of the malformed one.
-
-*Coming Soon™*
-
-# TODO Finalization
-- Clean up this readme (only do this once you've finished adding all of the core features).
-- Clean up the code and comments. The README's final form (when cleaned up) should look like professional documentation on how to use its features rather than a brain dump.
 
 # Cancelled Features
 - A system to allow for every modder to set up a voice pack in their own modding directory. This was planned with the intention of allowing modders to add voices to their own mods. This would've allowed other mods to have self-contained voices that came with the package.
@@ -59,3 +52,4 @@ When considering which order/precedence level to use, you should start with the 
 		- `SHOW_GET_MSG`: Getting more SP, getting an item, etc.
 		- `SHOW_TUTORIAL_MSG`: Tutorial stuff.
 		- `SHOW_TUTORIAL_PLAYER_MSG`: Tutorial stuff.
+	- Maybe try injecting into `ig.LangLabel.init` in the future, but the problem right now is that you can't track the origin file of certain messages like combat art names. Also, be aware of a String instead of an Object, as you might get with the "Cancel" button for elevators.
