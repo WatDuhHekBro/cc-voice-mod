@@ -11,7 +11,7 @@ Place the voice mod (default: `voice-mod`) in the directory `<Your CrossCode Dir
 			- voice
 
 ## Note
-While there are pre-existing .ogg files when you download the mod, they're only for demonstration on how the structure works. If you come up with a more full voice pack, **DO NOT COMMIT IT TO GITHUB!!** Binary files (like images, sound, and videos) do not work well with GitHub since it stores every version of a file, which can lead to slow downloading and large file sizes you can't easily get rid of. The demo voice files are from Wervyn (at least according to the metadata) and [Oddcast TTS](https://ttsdemo.com/).
+While there are pre-existing .ogg files when you download the mod, they're only for demonstration on how the structure works. If you come up with a more full voice pack, **DO NOT COMMIT IT TO GITHUB!!** Binary files (like images, sound, and videos) do not work well with GitHub since it stores every version of a file, which can lead to slow downloading and large file sizes you can't easily get rid of. The demo voice files are from Wervyn (at least according to the metadata).
 
 ## What is a `langUid`?
 A langUid is a piece of information attached to any message which gives that message a unique id number, which probably assist in translation as well. While it is not required to function for the game itself, it is required to have those present for this mod. For the base game, there are langUids for each message, though the same might not be true for other mods.
