@@ -3,6 +3,10 @@ This mod is an attempt to revive the voice acting mod (the code part at least). 
 
 This page will give you an overview on the design goals of the mod and what has changed from CCVA. This will NOT serve as **documentation on how to use this mod**, which can be found [here](https://github.com/WatDuhHekBro/voice-mod/blob/master/Documentation.md).
 
+# Credits
+- JoeGreen#6753: Led the entire CCVA Project.
+- Wervyn#1081: Voiced the Captain and the Designer in the sample files.
+
 # Major Changes from [CCVoiceActing](https://github.com/CCDirectLink/CCVoiceacting)
 - **Structural:** Instead of loading a file table that defines where to split each track and which langUids to apply each segment to, sound files are loaded automatically upon playing a new message with a langUid.
 	- The downside to this is that the user has to manually split lines using a tool like [Audacity](https://www.audacityteam.org/).
